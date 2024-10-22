@@ -42,33 +42,19 @@ def get_token():
 artist_ids = ["5rrmaoBXZ7Jcs4Qb77j0YA", "783AF57UpgTN2fditDRFSs"]
 
 def get_random_track_from_artist(token, artist_id):
-    # Passo 1: Buscar todos os álbuns do artista
-    url = f"https://api.spotify.com/v1/artists/{artist_id}/albums?include_groups=album&market=US&limit=50"
+    # Buscar as faixas populares de um artista
+    url = f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?market=US"
     headers = {"Authorization": f"Bearer {token}"}
     response = get(url, headers=headers)
 
     if response.status_code != 200:
         return None
 
-    albums = response.json()["items"]
-
-    # Passo 2: Escolher um álbum aleatório
-    random_album = random.choice(albums)
-
-    # Passo 3: Buscar todas as músicas do álbum escolhido
-    album_id = random_album["id"]
-    tracks_url = f"https://api.spotify.com/v1/albums/{album_id}/tracks"
-    tracks_response = get(tracks_url, headers=headers)
-
-    if tracks_response.status_code != 200:
-        return None
-
-    tracks = tracks_response.json()["items"]
-
-    # Passo 4: Escolher uma música aleatória do álbum
+    tracks = response.json()["tracks"]
+    
+    # Escolher uma música aleatória
     random_track = random.choice(tracks)
     return random_track
-
 
 def play_track(token, track_uri):
     url = "https://api.spotify.com/v1/me/player/play"
