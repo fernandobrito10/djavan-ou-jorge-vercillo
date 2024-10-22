@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Random Track</title>
+</head>
+<body>
+    <h1>Play a Random Track</h1>
+    <button id="play-button">Play Random Track</button>
+
+    <!-- Aqui é onde a prévia da música será tocada -->
+    <audio id="audio-player" controls></audio>
+    <p id="track-info"></p>
+
+    <script>
+        document.getElementById('play-button').addEventListener('click', function() {
+            fetch('/play-random', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.preview_url) {
+                    const audioPlayer = document.getElementById('audio-player');
+                    audioPlayer.src = data.preview_url;
+                    audioPlayer.play();
+
+                    document.getElementById('track-info').innerText = `Now Playing: ${data.track_name} by ${data.artist_name}`;
+                } else {
+                    alert('Could not play track.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
