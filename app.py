@@ -41,42 +41,38 @@ def get_token():
 
 artist_ids = ["5rrmaoBXZ7Jcs4Qb77j0YA", "783AF57UpgTN2fditDRFSs"]
 
-def get_random_track_from_artist(token, artist_id):
-    # Buscar as faixas populares de um artista
-    url = f"https://api.spotify.com/v1/artists/{artist_id}/top-tracks?market=US"
+def get_albums_from_artist(token, artist_id):
+    url = f"https://api.spotify.com/v1/artists/{artist_id}/albums"
     headers = {"Authorization": f"Bearer {token}"}
     response = get(url, headers=headers)
 
     if response.status_code != 200:
+        print(f"Erro ao buscar álbuns: {response.content}")
         return None
 
-    tracks = response.json()["tracks"]
-    
-    # Escolher uma música aleatória
-    random_track = random.choice(tracks)
-    return random_track
+    albums = response.json().get("items", [])
+    return albums
 
-def play_track(token, track_uri):
-    url = "https://api.spotify.com/v1/me/player/play"
+
+
+def get_tracks_from_album(token, album_id):
+    url = f"https://api.spotify.com/v1/albums/{album_id}/tracks"
     headers = {"Authorization": f"Bearer {token}"}
-    
-    # Verificar se há um dispositivo disponível
-    device_url = "https://api.spotify.com/v1/me/player/devices"
-    device_response = get(device_url, headers=headers)
-    
-    devices = device_response.json().get("devices", [])
-    if not devices:
-        return "Nenhum dispositivo disponível para reprodução."
+    response = get(url, headers=headers)
 
-    # Tocar a música no dispositivo ativo
-    data = {"uris": [track_uri]}
-    response = post(url, headers=headers, json=data)
-    
-    if response.status_code == 204:
-        return "Tocando música!"
-    else:
-        return f"Erro ao tocar música. Status: {response.status_code}"
+    if response.status_code != 200:
+        print(f"Erro ao buscar músicas do álbum: {response.content}")
+        return None
 
+    tracks = response.json()["items"]
+    
+    max_attempts = 10
+    for _ in range(max_attempts):
+        random_track = random.choice(tracks)
+        if random_track.get("preview_url"):
+            return random_track
+    
+    return None
 
 @app.route('/')
 def index():
@@ -84,23 +80,30 @@ def index():
 
 @app.route('/play-random', methods=["POST"])
 def play_random():
-    token = get_token()  # Corrigir a chamada para obter o token
-
-    # Escolher aleatoriamente um dos dois artistas
+    token = get_token()
     artist_id = random.choice(artist_ids)
+    print(f"Artista escolhido: {artist_id}")
+
+    albums = get_albums_from_artist(token, artist_id)
+    if not albums:
+        return "Erro ao obter álbuns do artista."
+
+    album = random.choice(albums)
+    print(f"Álbum escolhido: {album['name']}")
+
+    if album:
+        track = get_tracks_from_album(token, album["id"])
+        if track:
+            artista = "Djavan" if artist_id == "5rrmaoBXZ7Jcs4Qb77j0YA" else "Jorge Vercillo"
+            return jsonify({
+                "preview_url": track["preview_url"],
+                "artista": artista,
+                "track": track["name"],
+                "message": f"Tocando: {track['name']} por {track['artists'][0]['name']}"
+            })
     
-    # Buscar uma música aleatória do artista
-    track = get_random_track_from_artist(token, artist_id)
-    
-    if track and track['preview_url']:
-        # Retornar o preview_url para ser tocado na aplicação
-        return jsonify({
-            "track_name": track['name'],
-            "artist_name": track['artists'][0]['name'],
-            "preview_url": track['preview_url']
-        })
-    
-    return jsonify({"error": "Erro ao tocar música."})
+    return jsonify({"error": "Nenhuma música disponível com preview."})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

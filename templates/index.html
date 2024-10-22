@@ -1,36 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Play Random Track</title>
+    <title>Tocar Música Aleatória</title>
 </head>
 <body>
-    <h1>Play a Random Track</h1>
-    <button id="play-button">Play Random Track</button>
-
-    <!-- Aqui é onde a prévia da música será tocada -->
+    <button id="play-btn">Tocar Música Aleatória</button>
     <audio id="audio-player" controls></audio>
-    <p id="track-info"></p>
+    
+    <h2>Advinhe o Artista!</h2>
+    <button id="djavan-button">Djavan</button>
+    <button id="jorge-button">Jorge Vercillo</button>
+    
+    <p id="message"></p>  <!-- Mensagem para feedback ao usuário -->
+    <p id="high-score">High Score: 0</p>  <!-- Exibição do high score -->
+    <p id="correct-track"></p>  <!-- Exibição da música correta -->
 
     <script>
-        document.getElementById('play-button').addEventListener('click', function() {
+        let currentArtist = '';
+        let currentTrackName = '';
+        let streak = 0;
+        let highScore = 0;
+
+        document.getElementById("play-btn").onclick = function() {
+            playRandomMusic();
+        };
+
+        function playRandomMusic() {
+            const audioPlayer = document.getElementById("audio-player");
+            const message = document.getElementById("message");
+
             fetch('/play-random', {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.preview_url) {
-                    const audioPlayer = document.getElementById('audio-player');
+                    currentArtist = data.artista;  // Armazena o artista correto
+                    currentTrackName = data.track;  // Armazena o nome da música
                     audioPlayer.src = data.preview_url;
-                    audioPlayer.play();
-
-                    document.getElementById('track-info').innerText = `Now Playing: ${data.track_name} by ${data.artist_name}`;
+                    audioPlayer.play()
+                        .then(() => {
+                            message.textContent = `Tocando`;
+                        })
+                        .catch(playError => {
+                            console.error('Erro ao tentar tocar a música:', playError);
+                            message.textContent = "Erro ao tentar tocar a música. Tente novamente.";
+                        });
                 } else {
-                    alert('Could not play track.');
+                    message.textContent = data.error || "Erro ao tocar música.";
                 }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                message.textContent = "Erro na requisição. Tente novamente.";
             });
-        });
+        }
+
+        document.getElementById('djavan-button').addEventListener('click', () => checkAnswer('Djavan'));
+        document.getElementById('jorge-button').addEventListener('click', () => checkAnswer('Jorge Vercillo'));
+
+        function checkAnswer(artist) {
+            const message = document.getElementById('message');
+            const highScoreDisplay = document.getElementById('high-score');
+            const correctTrackDisplay = document.getElementById('correct-track');
+            const audioPlayer = document.getElementById('audio-player');
+            
+            if (artist === currentArtist) {
+                streak++;
+                if (streak > highScore) {
+                    highScore = streak;
+                }
+                highScoreDisplay.textContent = `High Score: ${highScore}`; // Atualiza o high score
+                message.textContent = `Acertou! Streak: ${streak}`;
+                correctTrackDisplay.textContent = '';  // Limpa a exibição da música correta
+                playRandomMusic();  // Tocar nova música após acerto
+            } else {
+                audioPlayer.pause(); // Para a música atual
+                audioPlayer.src = ""; // Limpa a fonte do áudio
+                message.textContent = `Errou! A música era: ${currentTrackName} de ${currentArtist}. Streak resetada.`;
+                streak = 0; // Reseta a streak
+            }
+        }
     </script>
 </body>
 </html>
